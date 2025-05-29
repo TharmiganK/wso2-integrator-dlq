@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<messageStore name="rabbitMQMsgStore" class="org.apache.synapse.message.store.impl.rabbitmq.RabbitMQStore" xmlns="http://ws.apache.org/ns/synapse">
+    <parameter name="store.rabbitmq.host.name">localhost</parameter>
+    <parameter name="store.producer.guaranteed.delivery.enable">false</parameter>
+    <parameter name="rabbitmq.connection.ssl.enabled">false</parameter>
+    <parameter name="store.rabbitmq.queue.name">messages.mi.dlq</parameter>
+    <parameter name="store.rabbitmq.host.port">5672</parameter>
+    <parameter name="store.rabbitmq.username"/>
+    <parameter name="store.rabbitmq.password"/>
+</messageStore>

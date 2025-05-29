@@ -1,0 +1,10 @@
+---
+key: "httpService-1.0.0"
+name : "httpService"
+displayName : "httpService"
+description: "httpService"
+version: "1.0.0"
+serviceUrl: "https://{MI_HOST}:{MI_PORT}/api/v1"
+definitionType: "OAS3"
+securityType: "BASIC"
+mutualSSLEnabled: false

@@ -1,0 +1,87 @@
+@App:name('DlqApp')
+
+@App:description('Demo for Dead Letter Queue implementation')
+
+-- Define the input stream for HTTP POST request
+@source(type='http',
+        receiver.url='http://localhost:9092/api/v1/messages',
+        @map(type='json'))
+define stream HttpInputStream (name string, data string);
+
+-- Define the output stream for HTTP POST response
+@OnError(action='STREAM')
+@sink(type='http-request',
+      sink.id="http-ep", 
+      method="POST", 
+      publisher.url='http://localhost:9091/api/v1/processor/messages',
+      blocking.io='true',
+      on.error='STREAM',
+      @map(type='json', @payload("{{content}}")))
+define stream HttpClientStream (content string);
+
+@sink(type='log')
+@source(type='http-response',
+        sink.id='http-ep',
+        http.status.code='201',
+        @map(type='json'))
+define stream HttpResponseLogStream(status string, message string);
+
+-- Define the output stream for the Source Queue
+@OnError(action='LOG')
+@sink(type='rabbitmq',
+      on.error='LOG',
+      uri='amqp://localhost:5672',
+      routing.key='messages.si',
+      exchange.name='si.exchange',
+      @map(type='json', @payload("{{content}}")))
+define stream ToSourceStream (content string);
+
+-- Define the output stream for the Dead Letter Queue (DLQ)
+@sink(type='rabbitmq',
+      uri='amqp://localhost:5672',
+      routing.key='messages.si.dlq',
+      exchange.name='si.exchange',
+      @map(type='json', @payload("{{content}}")))
+define stream ToDLQStream (content string);
+
+-- RabbitMQ Listener
+@source(type='rabbitmq', 
+        uri = 'amqp://localhost:5672',
+        queue.name='messages.si', 
+        routing.key='messages.si',
+        exchange.name = 'si.exchange', 
+        @map(type='json', fail.on.missing.attribute='false'))
+define stream SourceEventStream (message object, error object, suppressedExceptions object, stackTrace object);
+
+-- Logger
+@sink(type='log')
+define stream LogStream (message object);
+
+-- Log the messages received
+@info(name='logMessage')
+from HttpInputStream
+select map:create("name", name, "data", data) as message
+insert into LogStream;
+
+-- Insert message from HTTP source to source stream
+@info(name='sent message to source queue')
+from HttpInputStream
+select json:toString(map:create("message", map:create("name", name, "data", data))) as content
+insert into ToSourceStream;
+
+-- Call the HTTP Endpoint
+@info(name='callHttpEp')
+from SourceEventStream
+select json:toString(message) as content
+insert into HttpClientStream;
+
+-- Consumes from the fault stream
+@info(name='consumeFaultStream')
+from !HttpClientStream#log("Error Occured")
+select json:toString(
+        map:create(
+           "message", json:toObject(content),
+          "error", json:getObject(_error, "$.cause")
+        )
+    ) as content
+insert into ToDLQStream;

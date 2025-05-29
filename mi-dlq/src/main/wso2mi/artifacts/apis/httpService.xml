@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<api context="/api/v1" name="httpService" xmlns="http://ws.apache.org/ns/synapse">
+    <resource methods="POST" uri-template="/messages">
+        <inSequence>
+            <log category="INFO" logMessageID="false" logFullPayload="true" description="Log received message">
+                <message>Received message at the HTTP service</message>
+            </log>
+            <payloadFactory description="Construct the message" media-type="text" template-type="default">
+                <format>{"message": ${payload}}</format>
+            </payloadFactory>
+            <log category="INFO" logMessageID="false" logFullPayload="false" description="Sending the mssage to the target queue">
+                <message>Sending the message to the target queue</message>
+            </log>
+            <property name="OUT_ONLY" scope="default" type="STRING" description="Set OUT ONLY to true for not waiting for the response " value="true"/>
+            <call description="RabbitMQ Source Client">
+                <endpoint key="RabbitMqSourceClient"/>
+            </call>
+            <property name="OUT_ONLY" scope="default" type="STRING" description="Set OUT_ONLY to false" value="false"/>
+            <payloadFactory description="Update the message" media-type="json" template-type="default">
+                <format>{ "message": ""message has been accepted" }</format>
+            </payloadFactory>
+            <property name="HTTP_SC" scope="axis2" type="STRING" description="Update the status code response to 202 Accepted" value="202"/>
+            <respond description="Return the accepted response"/>
+        </inSequence>
+        <faultSequence>
+            <log category="ERROR" logMessageID="false" logFullPayload="true" description="Log the error">
+                <message>Error occurred while publishing the message</message>
+            </log>
+            <variable name="errorMsg" type="STRING" expression="get-property('ERROR_MESSAGE')" description="Error message"/>
+            <variable name="errorDetail" type="STRING" expression="get-property('ERROR_DETAIL')" description="Error Details"/>
+            <payloadFactory description="Construct the error response pody" media-type="text" template-type="default">
+                <format>{"errorMsg": "${vars.errorMsg}", "errorDetail": "${vars.errorDetail}"}</format>
+            </payloadFactory>
+            <property name="HTTP_SC" scope="axis2" type="STRING" description="Update the status code response to 500 InternalServerError" value="500"/>
+            <respond description="Return the internal server error response"/>
+        </faultSequence>
+    </resource>
+</api>

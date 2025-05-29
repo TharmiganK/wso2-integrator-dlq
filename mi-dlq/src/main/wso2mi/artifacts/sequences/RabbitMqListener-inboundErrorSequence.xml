@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sequence name="RabbitMqListener-inboundErrorSequence" trace="disable" xmlns="http://ws.apache.org/ns/synapse">
+    <log category="ERROR" logMessageID="false" logFullPayload="false" description="Log the error">
+        <message>Error ocuurred while processing the message</message>
+    </log>
+    <variable name="errorMsg" type="STRING" expression="get-property('ERROR_MESSAGE')" description="Error message"/>
+    <variable name="errorDetail" type="STRING" expression="get-property('ERROR_DETAIL')" description="Error Details"/>
+    <payloadFactory description="Construct the message with error details" media-type="text" template-type="default">
+        <format>{"message": "${payload}", "errorMsg": "${vars.errorMsg}", "errorDetail": "${vars.errorDetail}"}</format>
+    </payloadFactory>
+    <log category="INFO" logMessageID="false" logFullPayload="false" description="Sending the mssage to the target queue">
+        <message>Sending the message to the dead-letter queue</message>
+    </log>
+    <property name="OUT_ONLY" scope="default" type="STRING" description="Set OUT ONLY to true for not waiting for the response " value="true"/>
+    <call description="RabbitMQ DLQ Client">
+        <endpoint key="RabbitMqDlqClient"/>
+    </call>
+    <property name="OUT_ONLY" scope="default" type="STRING" description="Set OUT_ONLY to false" value="false"/>
+</sequence>

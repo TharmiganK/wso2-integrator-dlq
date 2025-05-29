@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sequence name="RabbitMqListener-inboundSequence" trace="disable" xmlns="http://ws.apache.org/ns/synapse">
+    <log category="INFO" logMessageID="false" logFullPayload="true" description="Log received message">
+        <message>Received message at the queue</message>
+    </log>
+    <payloadFactory description="Extract the message" media-type="json" template-type="default">
+        <format>${payload.message}</format>
+    </payloadFactory>
+    <log category="INFO" logMessageID="false" logFullPayload="false" description="Sending the message to HTTP endpoint">
+        <message>Sending the message to the HTTP endpoint</message>
+    </log>
+    <http.post configKey="httpClient">
+        <relativePath>/messages</relativePath>
+        <headers>[]</headers>
+        <requestBodyType>JSON</requestBodyType>
+        <requestBodyJson>${payload}</requestBodyJson>
+        <forceScAccepted>false</forceScAccepted>
+        <disableChunking>false</disableChunking>
+        <forceHttp10>false</forceHttp10>
+        <noKeepAlive>false</noKeepAlive>
+        <forcePostPutNobody>false</forcePostPutNobody>
+        <responseVariable>response</responseVariable>
+        <overwriteBody>true</overwriteBody>
+    </http.post>
+    <log category="INFO" logMessageID="false" logFullPayload="true" description="Response from HTTP endpoint">
+        <message>Response received from HTTP endpoint</message>
+    </log>
+</sequence>
